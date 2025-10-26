@@ -1,0 +1,3 @@
+[submodule "advanced-foundry-defi-stablecoin"]
+	path = advanced-foundry-defi-stablecoin
+	url = git@github.com:0xblueless/advanced-foundry-defi-stablecoin.git
