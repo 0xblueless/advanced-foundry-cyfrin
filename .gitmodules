@@ -1,0 +1,3 @@
+[submodule "defi-stablecoin"]
+	path = defi-stablecoin
+	url = ./defi-stablecoin
