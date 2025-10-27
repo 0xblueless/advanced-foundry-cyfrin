@@ -31,7 +31,7 @@ Our stablecoin will be:
 Always consider input sanitization when passing values to functions.
 
 Instead of writing conditionals multiple times, use modifiers instead. For example, for inputs which have to be more than zero:
-```
+```Solidity
 modifier moreThanZero(uint256 amount) {
     if (amount <= 0) {
         revert DSCEngine_NeedsMoreThanZero();
@@ -45,7 +45,7 @@ Emit events whenever state is changed.
 Recall the Checks, Effects, Interactions pattern. Executing external calls at the end helps protect against reentrancy.
 
 Remember to check the return value of the ERC20 transfer() and transferFrom() functions. If they return a boolean, we can write a function to revert if the transfer returns false:
-```
+```Solidity
 bool success = IERC20(token).transferFrom(msg.sender, address(this), amount);
 
 if (!success) {
@@ -58,9 +58,9 @@ if (!success) {
 ### 3.8 Creating the Mint Function
 To mint securely, mint() has to ensure the user's collateral value supports the amount being minted. This will require oracle pricefeeds, value conversions, and more.
 
-Health factor: (Sum of collateral / Sum of Borrows) * Liquidation Threshold
-For example, if Liquidation Threshold == 0.5, the protocol requires 200% collateralization minimum
-If a user's collateral/borrows == 2 (the minimum), health factor == 1
+Health factor: (Sum of collateral / Sum of Borrows) * Liquidation Threshold.
+For example, if Liquidation Threshold == 0.5, the protocol requires 200% collateralization minimum.
+If a user's collateral/borrows == 2 (the minimum), health factor == 1.
 
 Remember to adjust for precision / decimal places. To get the correct values you need both inputs to have the same number of decimal places (otherwise the result will be greater/larger than expected).
 
