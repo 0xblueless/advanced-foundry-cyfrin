@@ -67,7 +67,7 @@ Remember to adjust for precision / decimal places. To get the correct values you
 For example, if ETH => USD conversion returns 400000000000 to 8 decimal places ($4000), while the amount of ETH deposited is 1000000000000000000 to 18 decimal places (1 ETH), you the conversion to return 4000. But directly multiplying the amount of ETH by its conversion return value and scaling back to ETH's precision (1e18 * 4e12 / 1e18)  returns 4e12 (too large). To fix, first multiply 4e12 by 1e10, adjusting its precision to 18 decimal values. Then, 1e18 * 4e22 / 1e18 returns 4e4, which is $4000 (correct).
 
 In our code, we implement it as follows:
-```
+```Solidity
 uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
 uint256 private constant PRECISION = 1e18;
 
@@ -82,12 +82,12 @@ function getUsdValue(address token, uint256 amount) public view returns (uint256
 
 ### 3.9 Creating and Retrieving the Health Factor
 Because the EVM only works with whole numbers, we can implement liquidation thresholds like so:
-```
+```Solidity
 uint256 private constant LIQUIDATION_THRESHOLD = 50;
 uint256 private constant LIQUIDATION_PRECISION = 100;
 ```
 Then to calculate the health factor:
-```
+```Solidity
 function _healthFactor(address user) private view returns (uint256) {
     (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
     uint256 collateralMargin = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION PRECISION;
@@ -97,7 +97,7 @@ function _healthFactor(address user) private view returns (uint256) {
 Remember to multiply before dividing in order to avoid rounding down errors.
 And make `collateralMargin` more precise before dividing by totalDscMinted!
 Now, this means that the minimum health factor should be set as follows:
-```
+```Solidity
 uint256 private constant MIN_HEALTH_FACTOR = 1e18
 ```
 
@@ -105,7 +105,7 @@ uint256 private constant MIN_HEALTH_FACTOR = 1e18
 
 ### 3.11 Creating the Deployment Script
 Deploys and returns our contracts.
-```
+```Solidity
 ...
 import {Script} from "forge-std/Script.sol";
 import {DecentralizedStablecoin} from "../src/DecentralizedStablecoin.sol";
@@ -116,7 +116,7 @@ contract DeployDSC is Script {
 }
 ```
 DSCEngine takes several constructor parameters, such as tokenAddresses[], priceFeedAddresses[], and the DecentralizedStablecoin deployment address. To provide these, we can use a `HelperConfig` as follows:
-```
+```Solidity
 ...
 contract HelperConfig is Script {
     struct NetworkConfig {
@@ -131,7 +131,7 @@ contract HelperConfig is Script {
 }
 ```
 The idea is to write various functions that return a NetworkConfig struct filled with the appropriate addresses for the chain in use (Sepolia, local Anvil, etc). For Sepolia, we can find the addresses online. On Anvil, however, we'll have to deploy some mocks (remember to import these in the HelperConfig file):
-```
+```Solidity
     vm.startBroadcast();
     MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
     ERC20Mock wethMock = new ERC20Mock();
@@ -141,7 +141,7 @@ The idea is to write various functions that return a NetworkConfig struct filled
     vm.stopBroadcast();
 ```
 Then write a constructor that chooses which function to call based on the `block.chainid` of our deployment:
-```
+```Solidity
 constructor() {
     if (block.chainid == 11155111) {
         activeNetworkConfig = getSepoliaEthConfig();
@@ -151,24 +151,24 @@ constructor() {
 }
 ```
 In our deploy script, import the `HelperConfig` contract and enter the following into `run()`:
-```
+```Solidity
 HelperConfig config = new HelperConfig();
 (address wethUsdPriceFeed, address wbtcUsdPriceFeed, address weth, address wbtc, uint256 deployerKey) = config.activeNetworkConfig()
 ```
 Now we can create our tokenAddresses and priceFeedAddresses arrays and pass them into our main contract deployments:
-```
-    tokenAddresses = [weth, wbtc];
-    priceFeedAddresses = [wethUsdPriceFeed, wbtcUsdPriceFeed];
+```Solidity
+tokenAddresses = [weth, wbtc];
+priceFeedAddresses = [wethUsdPriceFeed, wbtcUsdPriceFeed];
 ​
-    vm.startBroadcast();
-    DecentralizedStableCoin dsc = new DecentralizedStableCoin();
-    DSCEngine engine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
-    vm.stopBroadcast();
+vm.startBroadcast();
+DecentralizedStableCoin dsc = new DecentralizedStableCoin();
+DSCEngine engine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
+vm.stopBroadcast();
 ```
 
 ### 3.12: Test the DSCEngine Smart Contract
 Now, we can do the following in our test contract. First import the main contracts, the forge-std Test contract, and our Deploy contract.
-```
+```Solidity
 contract DSCEngineTest is Test {
     DeployDSC deployer;
     DecentralizedStablecoin dsc;
@@ -188,7 +188,7 @@ function run() external returns (DecentralizedStablecoin, DSCEngine, HelperConfi
 return (dsc, engine, config);
 ```
 Then in our `setUp` function, we can add:
-```
+```Solidity
 (ethUsdPriceFeed, , weth, , ) = config.activeNetworkConfig();
 ```
 Now these can be referenced in our test functions.
@@ -223,21 +223,21 @@ When developing a protocol and writing tests, always be asking: "What are my inv
 This will make advanced testing easier.
 
 In Foundry, you can automate fuzz testing by adding parameters to your tests and referring to those parameters within the test function. Foundry will automatically supply pseudo-random values to those parameters when testing. For instance:
-```
+```Solidity
 function testAlwaysGetZero(uint256 x) public {
     myContract.doStuff(x);
     assert(myContract.shouldAlwaysBeZero() == 0);
 }
 ```
 Configure our fuzzer in `foundry.toml`:
-```
+```toml
 [fuzz]
 runs = 1000
 ```
 However, this only conducts stateless fuzzing, where the state at the end of every run is refreshed.
 
 To setup stateful fuzz testing, we have to import `StdInvariant.sol` and have our test contract inherit it. Then, set up the target contract by calling `targetContract(address)` in the test's `setUp()` function:
-```
+```Solidity
 function setUp() public {
     myContract = new MyContract();
     targetContract(address(myContract));
@@ -251,7 +251,7 @@ Invariant tests can be "open" or "handler-based".
 - Test handlers: Narrow the fuzzer's focus, e.g. by configuring aspects of a contract's state beforehand. Leads to fewer "bad runs", but can make bad assumptions.
 
 First, set up fuzzer options in `foundry.toml`:
-```
+```toml
 [invariant]
 runs = 128
 depth = 128
@@ -265,7 +265,7 @@ The idea with handlers is that our fuzzer (`InvariantsTest.t.sol`) call random f
 Problem, although our depositCollateral tests now pre-mint some tokens, our tests keep reverting because the token addresses are being randomized to values that are neither wBTC or wETH!
 
 To fix this, we can write a helper function that picks a valid collateral based on the random value provided by our framework:
-```
+```Solidity
 function _getCollateralFromSeed(uint256 collateralSeed) private view returns (ERC20Mock) {
     if (collateralSeed % 2 = 0) {
         return weth;
@@ -275,7 +275,7 @@ function _getCollateralFromSeed(uint256 collateralSeed) private view returns (ER
 }
 ```
 Then, our handler's depositCollateral() function can look like this:
-```
+```Solidity
 function depositCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
     ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
     dsce.depositCollateral(address(collateral), amountCollateral);
@@ -304,7 +304,7 @@ Import `MockV3Aggregator.sol` to mimic the behaviour of a price feed.
 ### 3.28 Manage Your Oracle Connections
 We can write a library to protect against oracle misbehaviours.
 For example, to ensure the prices DSCEngine uses aren't "stale", we can do:
-```
+```Solidity
 library OracleLib {
     error OracleLib_StalePrice();
 
@@ -318,7 +318,7 @@ library OracleLib {
 }
 ```
 Then in `DSCEngine.sol`, we can import `OracleLib.sol` and replace all our AggregatorV3Interface calls to `latestRoundData` with `staleCheckLatestRoundData`, which reverts if the oracle's price is stale.
-```
+```Solidity
 using OracleLib for AggregatorV3Interface
 ```
 The above basically tells Solidity: "Attach all functions from the OracleLib library to the AggregatorV3Interface type, so I can call them as if they were methods on that type".
